@@ -1,0 +1,234 @@
+$primary : #00bcd4 !default;
+
+@import 'node_modules/bootstrap/scss/bootstrap';
+
+nav
+{
+    li:not(:last-of-type)
+    {
+        margin-right: 2em;
+    }
+}
+
+img.product-image {
+    width: 100%;
+}
+
+/* LOGIN */
+
+.form-signin
+{
+    width: 100%;
+    max-width: 330px;
+    padding: 15px;
+    margin: auto;
+}
+
+/* SALES */
+
+h2
+{
+    font-weight: 400 !important;
+}
+
+table.sales
+{
+    td
+    {
+        &:first-of-type
+        {
+            width: 200px;
+        }
+
+        &.money
+        {
+            width: 120px !important;
+        }
+
+        .status
+        {
+            display: inline;
+            padding: 4px 8px;
+            color: #FFF;
+            text-transform: uppercase;
+            font-size: 12px;
+            background-color: #ff8d00;
+
+            &.paid 
+            {
+                background-color: #00ce4f;
+            }
+
+            &.eligible 
+            {
+                background-color: #007bff;
+            }
+
+            &.awaiting_payment
+            {
+                background-color: grey;
+            }
+
+            &.rejected, &.canceled 
+            {
+                background-color: #dc3545;
+            }
+        }
+    }
+}
+
+/* ACTIVITY */
+
+table.summary
+{
+    width: 100%;
+
+    td, th
+    {
+        padding: 10px;
+        padding-right: 20px;
+        width: 25%;
+    }
+
+    td
+    {
+        font-size: 20px;
+    }
+
+    th
+    {
+        color: $secondary;
+        padding-bottom: 0;
+    }
+}
+
+.data-graph
+{
+    position: relative; 
+    width: 100%; 
+    overflow: hidden;
+
+    .horizontal-bar
+    {
+        z-index: 3;
+        height: 1px; 
+        width: 100%; 
+        margin-top: 30px; 
+        margin-left: 50px; 
+        margin-right: 50px;
+        background-color: #00000024;
+        position: absolute; 
+        top: 0;
+    }
+
+    table
+    {
+        border-collapse: collapse; 
+        width: 100%;
+        overflow-x: auto;
+        background: #fff!important;
+
+        td:nth-of-type(odd)
+        {
+            background-color: #fafafa;
+        }
+
+        tbody td
+        {
+            background-color: #FFF !important;
+        }
+
+        .units
+        {
+            background-color: #fff !important;
+            min-width: 6%;
+            padding: 12px;
+            font-weight: bold;
+            text-align: center;
+            position: relative;
+            font-size: 14px;
+            text-transform: uppercase;
+            z-index: 4;
+
+            &:first-of-type
+            {
+                color: $primary;
+            }
+
+            color: rgb(201, 66, 255);
+        }
+
+        .left-y-axis
+        {
+            display: flex; 
+            flex-direction: column; 
+
+            .y-axis-step
+            {
+                margin-top: 1px;
+            }
+        }
+
+        .x-axis-step
+        {
+            min-width: 30px;
+    	    border-bottom: 2px solid #555;
+            padding-bottom: 0;
+        }
+
+        .data-content
+        {
+            margin-top: 30px;
+        }
+
+        .graph-bar
+        {
+            display: flex;
+            flex-direction: column;
+            width: 50%;
+
+            .graph-bar-data
+            {
+                background-color: rgb(201, 66, 255);
+                width: 100%;
+            }
+
+            &:first-of-type .graph-bar-data
+            {
+                background-color: $primary;
+            }
+        }
+    }
+
+    .fill-available
+    {
+        flex-grow: 1;
+    }
+}
+
+/* PAYMENTS */
+
+table.payment-summary
+{
+    width: auto !important;
+
+    td, th
+    {
+        width: auto !important;
+    }
+
+    td.money
+    {
+        font-size: 26px;
+
+        &.available
+        {
+            color: $success !important;
+        }
+
+        &.unavailable
+        {
+            color: $danger !important;
+        }
+    }
+}
