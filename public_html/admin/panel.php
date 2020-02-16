@@ -1,11 +1,11 @@
 <?php
 
-require_once __DIR__ . '/private/dataService.php';
-require_once __DIR__ . '/private/security.php';
+require_once dirname(__DIR__) . '/private/dataService.php';
+require_once dirname(__DIR__) . '/private/security.php';
 
-if(!is_authenticated())
+if(!is_authenticated(true))
 {
-    header('Location: login.php');
+    header('Location: /admin/');
 }
 
 function isValidYear($year)
@@ -19,27 +19,12 @@ function isValidMonth($month)
     return is_numeric($month) && $month <= 12 && $month >= 1;
 }
 
-$MIN_TURNOVER_FOR_BONUS = 500;
-$COMMISSION_BONUS = 0.25;
-$dataService = new DataService();
-$currentUser = getCurrentLoggedUser();
-setlocale(LC_TIME, "fr_FR");
-
-$isClaimReward = (get_clean_obtain('claimReward') === 'true');
-
-if($isClaimReward)
-{
-    $claimAppliedSuccessfully = false;
-
-    if($dataService->mayBenefitFromMonthlyBonus($currentUser->ID, $MIN_TURNOVER_FOR_BONUS))
-    {
-        $claimAppliedSuccessfully = $dataService->applyMonthlyBonus($currentUser->ID, $COMMISSION_BONUS);
-    }
-}
 
 $MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 $CURRENT_YEAR = date('Y');
 $CURRENT_MONTH = date('n');
+$currentUser = getCurrentLoggedUser();
+setlocale(LC_TIME, "fr_FR");
 
 $getMonth = get_clean_obtain('month');
 $getYear = get_clean_obtain('year');
@@ -48,13 +33,13 @@ $currentYear = isValidYear($getYear) ? intval($getYear) : intval(date('Y'));
 $currentMonth = isValidMonth($getMonth) ? intval($getMonth) : intval(date('n'));
 $currentDay = date('j');
 
-$visits = $dataService->getVisitsByPartnerIdAndMonth($currentUser->ID, $currentMonth, $currentYear);
-$sales = $dataService->getSalesByPartnerIdAndMonth($currentUser->ID, $currentMonth, $currentYear);
+$dataService = new DataService();
+$visits = $dataService->getAllVisitsByMonth($currentMonth, $currentYear);
+$sales = $dataService->getAllPartnerSales($currentMonth, $currentYear);
 $turnover = 0;
 $iVisit = 0;
 $iSale = 0;
 
-$thisMonthVisits = $dataService->getVisitsByPartnerIdAndMonth($currentUser->ID, $currentMonth, $currentYear);
 $thisMonthDays = cal_days_in_month(CAL_GREGORIAN, $currentMonth, $currentYear);
 
 $graphHeight = 200;
@@ -108,13 +93,6 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
 <?php ob_start(); ?>
 
 <h1 class="mb-5">Activité</h1>
-<?php if($isClaimReward) : ?>
-    <?php if($claimAppliedSuccessfully) : ?>
-        <p class="alert alert-success">Une commission de <?php echo number_format($COMMISSION_BONUS * 100, 2) ?> % a été appliquée sur les commandes du mois en cours avec succès. Félicitations !</p>
-    <?php else : ?>
-        <p class="alert alert-danger">Vous ne pouvez pas bénéficier d'une commission bonus.</p>
-    <?php endif; ?>
-<?php endif; ?>
 <table class="mb-5 summary">
     <style type="text/css" scoped>
         .data-graph.y<?php echo $CURRENT_YEAR ?>.m<?php echo $CURRENT_MONTH ?> td.d<?php echo $currentDay ?>
@@ -124,9 +102,9 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
     </style>
     <thead>
         <th class="w-50">Mois</th>
-        <th>Revenus des ventes</th>
-        <th>Chiffre d'affaire</th>
-        <th>Visites</th>
+        <th>Revenus des partenaires</th>
+        <th>CA des partenaires</th>
+        <th>Visites partenaires</th>
     </thead>
     <tbody>
         <tr>
@@ -148,12 +126,7 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
                 </form>
             </td>
             <td><?php echo number_format($totalMonthSales, 2); ?> €</td>
-            <td>
-                <?php echo number_format($turnover, 2) ?> €
-                <?php if($turnover >= $MIN_TURNOVER_FOR_BONUS && !$dataService->hasAlreadyHadMonthlyBonus($currentUser->ID)): ?>
-                    <a href="?claimReward=true" class="btn btn-sm mb-1 btn-success">Réclamer ma prime</a>
-                <?php endif; ?>
-            </td>
+            <td><?php echo number_format($turnover, 2) ?> €</td>
             <td><?php echo $totalMonthVisits ?></td>
         </tr>
     </tbody>
@@ -219,5 +192,5 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
 
 <?php 
     $content = ob_get_clean();
-    require_once __DIR__ . '/private/templates/main-template.php'; 
+    require_once dirname(__DIR__) . '/private/templates/admin-template.php'; 
 ?>

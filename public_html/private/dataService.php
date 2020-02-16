@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/model/Partner.class.php';
+require_once __DIR__ . '/model/Admin.class.php';
 require_once __DIR__ . '/model/Order.class.php';
 require_once __DIR__ . '/model/PaymentRequest.class.php';
 require_once __DIR__ . '/utils.php';
@@ -129,6 +130,34 @@ class DataService
         return $visits;
     }
 
+    function getAllVisitsByMonth($month, $year)
+    {
+        if($month == null) $month = date('n');
+        if($year == null) $year = date('Y');
+        
+        $connection = $this->createConnection();
+        $query = "SELECT count(*) AS `TotalVisits`, DAY(VisitDateTime) AS `Day`
+            FROM Visit
+            WHERE MONTH(VisitDateTime) = ? AND YEAR(VisitDateTime) = ?
+            AND PartnerID IS NOT NULL
+            GROUP BY Day
+            ORDER BY Day ASC";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('ii', $month, $year);
+        $statement->execute();
+        $result = $statement->get_result();
+        $statement->close();
+        $visits = [];
+        
+        while($row = $result->fetch_assoc())
+        {
+            $visits[] = $row;
+        }
+        
+        $connection->close();
+        return $visits;
+    }
+
     function getSalesByPartnerIdAndMonth($partnerID, $month, $year)
     {
         if(empty($partnerID)) return null;
@@ -136,7 +165,7 @@ class DataService
         if($year == null) $year = date('Y');
         
         $connection = $this->createConnection();
-        $query = "SELECT PartnerID, sum(Amount * CommissionPercentage) AS `TotalSales`, count(*) AS `NumberOfSales`, DAY(PaymentDateTime) AS `Day`, sum(Amount) AS `Turnover`
+        $query = "SELECT PartnerID, sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `TotalSales`, count(*) AS `NumberOfSales`, DAY(PaymentDateTime) AS `Day`, sum(Amount) AS `Turnover`
             FROM `Order`
             WHERE CommissionPercentage IS NOT NULL AND `Status` NOT IN('rejected', 'canceled') AND MONTH(PaymentDateTime) = ? 
             AND YEAR(PaymentDateTime) = ? 
@@ -159,6 +188,35 @@ class DataService
         return $sales;
     }
 
+    function getAllPartnerSales($month, $year)
+    {
+        if($month == null) $month = date('n');
+        if($year == null) $year = date('Y');
+        
+        $connection = $this->createConnection();
+        $query = "SELECT sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `TotalSales`, count(*) AS `NumberOfSales`, DAY(PaymentDateTime) AS `Day`, sum(Amount) AS `Turnover`
+            FROM `Order`
+            WHERE CommissionPercentage IS NOT NULL AND `Status` NOT IN('rejected', 'canceled') AND MONTH(PaymentDateTime) = ? 
+            AND YEAR(PaymentDateTime) = ?
+            AND PartnerID IS NOT NULL
+            GROUP BY Day
+            ORDER BY Day ASC";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('ii', $month, $year);
+        $statement->execute();
+        $result = $statement->get_result();
+        $statement->close();
+        $sales = [];
+        
+        while($row = $result->fetch_assoc())
+        {
+            $sales[] = $row;
+        }
+        
+        $connection->close();
+        return $sales;
+    }
+
     function getPagedSalesByPartner($partnerID, $pageSize = 10, $pageIndex = 0)
     {
         if(empty($partnerID)) return null;
@@ -166,7 +224,7 @@ class DataService
         $connection = $this->createConnection();
         $query = 
         "   SELECT o.ID, o.ShopifyID, o.ShippingDateTime, o.PaymentDateTime, o.PartnerID, o.PayoutDateTime, 
-            o.PaymentRequestID, o.CommissionPercentage, o.Amount, o.CustomerWithdrawalLimitDate, 
+            o.PaymentRequestID, o.CommissionPercentage, o.BonusCommissionPercentage, o.Amount, o.CustomerWithdrawalLimitDate, 
             IF(pr.ID IS NOT NULL, 
                 IF(pr.PaymentDateTime IS NOT NULL, 
                     'paid'
@@ -225,6 +283,30 @@ class DataService
             $partner = $result->fetch_object(Partner::class);
             if(password_verify($password, $partner->Password))
                 return $partner;
+        }
+        return ERR_LOGIN_INFO;
+    }
+
+    function getAdminByEmailAndPassword(string $email, string $password)
+    {
+        if(empty($email) || empty($password)) return ERR_LOGIN_INCORRECT;
+
+        $connection = $this->createConnection();
+        $query = '  SELECT *
+                    FROM `Admin`
+                    WHERE Email = ?';
+        $statement = $connection->prepare($query);
+        $statement->bind_param('s', $email);
+        $statement->execute();
+        $result = $statement->get_result();
+        $statement->close();
+        $connection->close();
+
+        if(isset($result) && $result->num_rows > 0)
+        {
+            $admin = $result->fetch_object(Admin::class);
+            if(password_verify($password, $admin->Password))
+                return $admin;
         }
         return ERR_LOGIN_INFO;
     }
@@ -341,7 +423,7 @@ class DataService
 
         $connection = $this->createConnection();
         $query = "
-            SELECT sum(Amount * CommissionPercentage) AS `Revenue`, sum(Amount) AS `SalesAmount`
+            SELECT sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `Revenue`, sum(Amount) AS `SalesAmount`
             FROM `Order`
             WHERE `Status` NOT IN('rejected', 'canceled')
             AND PartnerID = ?
@@ -417,7 +499,7 @@ class DataService
             {
                 $connection->commit();
                 $query = 
-                "   SELECT pr.*, sum(o.Amount * o.CommissionPercentage) as `Total`
+                "   SELECT pr.*, sum(o.Amount * COALESCE(o.BonusCommissionPercentage, o.CommissionPercentage)) as `Total`
                     FROM `PaymentRequest` pr
                     LEFT JOIN `Order` o ON o.PaymentRequestID = pr.ID
                     WHERE pr.ID = ?
@@ -429,8 +511,10 @@ class DataService
                 $insertedPaymentRequest = $result->fetch_object(PaymentRequest::class);
             }
             else {
-                throw new Exception('Payment request added but empty.');
                 $connection->rollback();
+                $statement->close();
+                $connection->close();
+                throw new Exception('Payment request added but empty.');
             }
         } 
         else $connection->rollback();
@@ -467,21 +551,34 @@ class DataService
         return $orders;
     }
 
-    function getPaymentRequests($partnerID)
+    function getPaymentRequests($partnerID, $all = false)
     {
-        if($partnerID == null) return;
+        if($partnerID == null && !$all) return;
 
         $paymentRequests = [];
         $connection = $this->createConnection();
-        $query = 
-        "   SELECT pr.*, sum(o.Amount * o.CommissionPercentage) as `Total`
-            FROM `PaymentRequest` pr
-            LEFT JOIN `Order` o ON o.PaymentRequestID = pr.ID
-            WHERE pr.PartnerID = ?
-            GROUP BY pr.ID
-            ORDER BY pr.DateTime DESC";
-        $statement = $connection->prepare($query);
-        $statement->bind_param('i', $partnerID);
+        if(!$all)
+        {
+            $query = 
+            "   SELECT pr.*, sum(o.Amount * COALESCE(o.BonusCommissionPercentage, o.CommissionPercentage)) as `Total`
+                FROM `PaymentRequest` pr
+                LEFT JOIN `Order` o ON o.PaymentRequestID = pr.ID
+                WHERE pr.PartnerID = ?
+                GROUP BY pr.ID
+                ORDER BY pr.DateTime DESC";
+            $statement = $connection->prepare($query);
+            $statement->bind_param('i', $partnerID);
+        }
+        else
+        {
+            $query = 
+            "   SELECT pr.*, sum(o.Amount * COALESCE(o.BonusCommissionPercentage, o.CommissionPercentage)) as `Total`
+                FROM `PaymentRequest` pr
+                LEFT JOIN `Order` o ON o.PaymentRequestID = pr.ID
+                GROUP BY pr.ID
+                ORDER BY pr.DateTime DESC";
+                $statement = $connection->prepare($query);
+        }
         $statement->execute();
         $result = $statement->get_result();
         $statement->close();
@@ -502,18 +599,104 @@ class DataService
         $query = 
         "   UPDATE `PaymentRequest`
             SET PaymentDateTime = NOW()
-            WHERE ID = ?;
-            UPDATE `Order`
-            SET PayoutDateTime = NOW()
-            WHERE PaymentRequestID = ?;";
+            WHERE ID = ?";
         $statement = $connection->prepare($query);
-        $statement->bind_param('ii', $paymentRequestID, $paymentRequestID);
+        $statement->bind_param('i', $paymentRequestID);
+        $statement->execute();
+        $result = $statement->affected_rows > 0;
+        if($result) 
+        {
+            $query = 
+            "   UPDATE `Order`
+                SET PayoutDateTime = NOW()
+                WHERE PaymentRequestID = ? ";
+            $statement = $connection->prepare($query);
+            $statement->bind_param('i', $paymentRequestID);
+            $statement->execute();
+            $result = $statement->affected_rows > 0;
+            if($result) $connection->commit();
+            else $connection->rollback();
+        }
+        else $connection->rollback();
+        $statement->close();
+        $connection->close();
+
+        return $result;
+    }
+
+    function applyMonthlyBonus($partnerID, $bonus)
+    {
+        if($partnerID == null) return null;
+        $month = intval(date('n'));
+        $year = intval(date('Y'));
+        if($bonus < 0 || $bonus > 0.25) $bonus = 0.25;
+        
+        try
+        {
+            $connection = $this->createConnection();
+            $query = 
+            "   UPDATE `Order`
+                SET BonusCommissionPercentage = ?
+                WHERE MONTH(PaymentDateTime) = ?
+                AND YEAR(PaymentDateTime) = ?
+                AND PartnerID = ?";
+            $statement = $connection->prepare($query);
+            $statement->bind_param('diii', $bonus, $month, $year, $partnerID);
+            $statement->execute();
+            $numberRowsAffected = $statement->affected_rows;
+            $statement->close();
+            $connection->close();
+        } catch (Exception $e)
+        {
+            return null;
+        }
+
+        return $numberRowsAffected > 0;
+    }
+
+    function hasAlreadyHadMonthlyBonus($partnerID)
+    {
+        if($partnerID == null) return true;
+        $month = intval(date('n'));
+        $year = intval(date('Y'));
+        
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT BonusCommissionPercentage FROM `Order`
+            WHERE MONTH(PaymentDateTime) = ?
+            AND YEAR(PaymentDateTime) = ?
+            AND PartnerID = ?
+            AND BonusCommissionPercentage IS NOT NULL";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('dii', $month, $year, $partnerID);
         $statement->execute();
         $result = $statement->get_result();
         $statement->close();
         $connection->close();
 
-        return $result;
+        return $result->num_rows > 0;
+    }
+
+    function mayBenefitFromMonthlyBonus($partnerID, $minTurnover = 500)
+    {
+        if($partnerID == null) return false;
+        $month = intval(date('n'));
+        $year = intval(date('Y'));
+        
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT SUM(Amount) `Amount`, MONTH(PaymentDateTime) M, YEAR(PaymentDateTime) Y FROM `Order`
+            WHERE PartnerID = ?
+            GROUP BY M, Y
+            HAVING M = ? AND Y = ?";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('iii', $partnerID, $month, $year);
+        $statement->execute();
+        $result = $statement->get_result();
+        $statement->close();
+        $connection->close();
+
+        return $result->fetch_assoc()['Amount'] >= $minTurnover && !$this->hasAlreadyHadMonthlyBonus($partnerID);
     }
 }
 

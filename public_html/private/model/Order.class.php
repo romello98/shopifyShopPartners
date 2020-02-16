@@ -6,6 +6,7 @@ class Order
     public $ShopifyID;
     public $PaymentDateTime;
     public $CommissionPercentage;
+    public $BonusCommissionPercentage;
     public $PayoutDateTime;
     public $Status;
     public $CustomerWithdrawalLimitDate;

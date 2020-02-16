@@ -33,6 +33,7 @@ $sales = $dataService->getPagedSalesByPartner($currentUser->ID);
     </thead>
     <tbody>
 <?php foreach($sales as $sale) : ?>
+    <?php $hasBonus = $sale->BonusCommissionPercentage !== null; ?>
         <tr>
             <td>
                 <p><?php echo dateFormat($sale->PaymentDateTime); ?>
@@ -44,10 +45,21 @@ $sales = $dataService->getPagedSalesByPartner($currentUser->ID);
                 <p><?php echo number_format($sale->Amount, 2); ?> €</p>
             </td>
             <td>
-                <p><?php echo number_format($sale->CommissionPercentage * 100, 2) ?> %</p>
+                <?php if($hasBonus) : ?>
+                    <del class="text-secondary"><?php echo number_format($sale->CommissionPercentage * 100, 2) ?> %</del>
+                    <span class="text-success font-weight-bold"><?php echo number_format($sale->BonusCommissionPercentage * 100, 2) ?> %</span>
+                <?php else : ?>
+                    <p><?php echo number_format($sale->CommissionPercentage * 100, 2) ?> %</p>
+                <?php endif; ?>
             </td>
             <td class="money">
-                <p><?php echo number_format($sale->Amount * $sale->CommissionPercentage, 2) ?> €</p>
+                <?php if($hasBonus) : ?>
+                    <del class="text-secondary"><?php echo number_format($sale->Amount * $sale->CommissionPercentage, 2) ?> €</del>
+                    <span class="text-success font-weight-bold"><?php echo number_format($sale->Amount * $sale->BonusCommissionPercentage, 2) ?> €</span>
+                <?php else : ?>
+                    <p><?php echo number_format($sale->Amount * $sale->CommissionPercentage, 2) ?> €</p>
+                <?php endif; ?>
+               
             </td>
             <td>
                 <p class="status <?php echo $sale->Status; ?>"><?php echo $sale->getStatusLabel(); ?></p>

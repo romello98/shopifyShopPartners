@@ -1,5 +1,5 @@
 <head>
-    <title>Eshop</title>
+    <title>Administration</title>
     <meta charset="UTF-8"/>
     <link rel="stylesheet" type="text/css" href="/style.css"/>
     <script src="https://code.jquery.com/jquery-2.1.3.js"></script>

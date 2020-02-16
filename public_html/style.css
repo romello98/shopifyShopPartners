@@ -10790,7 +10790,7 @@ table.sales td:first-of-type {
 }
 
 table.sales td.money {
-  width: 120px !important;
+  width: 160px !important;
 }
 
 table.sales td .status {

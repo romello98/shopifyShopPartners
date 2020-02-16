@@ -5,10 +5,9 @@
 if(!isset($withContainer)) $withContainer = true;
 if(!isset($content)) $content = 'Insert template content here.';
 if(!isset($withNav)) $withNav = true;
-if(!isset($isAdmin)) $isAdmin = false;
 
-require dirname(__DIR__, 2) . '/head.php';
-if($withNav) require dirname(__DIR__, 2) . '/nav.php';
+require __DIR__ . '/admin-head.php';
+if($withNav) require __DIR__ . '/admin-nav.php';
 
 ?>
 <body>
