@@ -30,9 +30,6 @@ function isPage($pageName)
                 </li>
             </ul>
             <ul class="navbar-nav my-2 my-lg-0">
-                <li class="nav-item<?php echo isPage('account') ? ' active' : '' ?>">
-                    <a class="nav-link" href="/admin/account.php">Compte <span class="sr-only"></span></a>
-                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="/logout.php?admin=true">Déconnexion <span class="sr-only"></span></a>
                 </li>
