@@ -328,6 +328,36 @@ class DataService
         return $result->num_rows > 0;
     }
 
+    function setOrderShipped($shopifyOrderID)
+    {
+        $connection = $this->createConnection();
+        $query = '  UPDATE `Order`
+                    SET ShippingDateTime = NOW()
+                    WHERE ShopifyID = ?';
+        $statement = $connection->prepare($query);
+        $statement->bind_param('i', $shopifyOrderID);
+        $statement->execute();
+        $isSuccess = $statement->affected_rows == 1;
+        $statement->close();
+        $connection->close();
+        return $isSuccess;
+    }
+
+    function setOrderCanceled($shopifyOrderID)
+    {
+        $connection = $this->createConnection();
+        $query = '  UPDATE `Order`
+                    SET `Status` = \'canceled\'
+                    WHERE ShopifyID = ?';
+        $statement = $connection->prepare($query);
+        $statement->bind_param('i', $shopifyOrderID);
+        $statement->execute();
+        $isSuccess = $statement->affected_rows == 1;
+        $statement->close();
+        $connection->close();
+        return $isSuccess;
+    }
+
     function hasPaypalEmail($partnerID)
     {
         $connection = $this->createConnection();
