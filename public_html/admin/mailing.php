@@ -31,10 +31,12 @@ if($isMailSending)
 
 $ADDITIONAL_SCRIPTS = []; 
 $ADDITIONAL_SCRIPTS[] = "
+<script src=\"/admin/htmlButton.js\"></script>
 <script src=\"//cdn.quilljs.com/1.3.6/quill.min.js\"></script>
 <link href=\"//cdn.quilljs.com/1.3.6/quill.snow.css\" rel=\"stylesheet\">
 <script>
     window.onload = function() {
+        Quill.register(\"modules/htmlEditButton\", htmlEditButton);
         container = document.getElementById('editor');
         var toolbarOptions = [
             [{ 'font': [] }],
@@ -59,6 +61,7 @@ $ADDITIONAL_SCRIPTS[] = "
             debug: 'info',
             modules: {
               toolbar: toolbarOptions,
+              htmlEditButton: {},
             },
             placeholder: 'Rédigez votre e-mail...',
             readOnly: false,
