@@ -698,6 +698,40 @@ class DataService
 
         return $result->fetch_assoc()['Amount'] >= $minTurnover && !$this->hasAlreadyHadMonthlyBonus($partnerID);
     }
+
+    function getCustomersEmails($onlyAcceptMarketing = true)
+    {
+        $emailsList = [];
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT Email
+            FROM `Customer` ";
+        if($onlyAcceptMarketing)
+            $query .= " WHERE AcceptsMarketing = TRUE";
+        $result = $connection->query($query);
+        $connection->close();
+
+        while($row = $result->fetch_assoc())
+            $emailsList[] = $row['Email'];
+
+        return $emailsList;
+    }
+
+    function getPartnersEmails()
+    {
+        $emailsList = [];
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT Email
+            FROM `Partner` ";
+        $result = $connection->query($query);
+        $connection->close();
+
+        while($row = $result->fetch_assoc())
+            $emailsList[] = $row['Email'];
+
+        return $emailsList;
+    }
 }
 
 ?>

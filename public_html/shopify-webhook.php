@@ -33,6 +33,7 @@ if ($HMAC_HEADER !== null)
 			$dataService = new DataService();
 			$newOrder->fillWithShopifyObject($decodedData);
 			$errorsList = $dataService->addOrder($newOrder);
+			//TODO: Save customer email
 
 			$file = fopen('errors.txt', 'w');
 			fwrite($file, '[' . date('d M Y H:i:s') . '] ' . var_export($errorsList, true) . "\n");
