@@ -84,7 +84,7 @@ $ADDITIONAL_SCRIPTS[] = "
 
 <div id="editor">
 </div>
-<form action="" method="POST" onsubmit="return send()" class="form-inline">
+<form action="" method="POST" onsubmit="return send()" class="mt-4 form-inline">
     <input id="body" type="hidden" name="body"/>
     <label class="mr-2" for="to">Destinataires : </label>
     <select class="custom-select mr-4" name="to" id="to">
@@ -95,7 +95,7 @@ $ADDITIONAL_SCRIPTS[] = "
         <input type="checkbox" class="mr-2 custom-control-input" name="acceptMarketing" id="acceptMarketing">
         <label class="custom-control-label" for="acceptMarketing">Marketing accepté uniquement</label>
     </div>
-    <button type="submit" class="mt-3 btn btn-primary">Envoyer</button>
+    <button type="submit" class="ml-auto btn btn-primary">Envoyer</button>
 </form>
 
 <?php 
