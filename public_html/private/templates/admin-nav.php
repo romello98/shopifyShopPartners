@@ -25,6 +25,9 @@ function isPage($pageName)
                 <li class="nav-item<?php echo isPage('partners') ? ' active' : '' ?>">
                     <a class="nav-link" href="/admin/partners.php">Partenaires <span class="sr-only"></span></a>
                 </li>
+                <li class="nav-item<?php echo isPage('mailing') ? ' active' : '' ?>">
+                    <a class="nav-link" href="/admin/mailing.php">Mailing <span class="sr-only"></span></a>
+                </li>
             </ul>
             <ul class="navbar-nav my-2 my-lg-0">
                 <li class="nav-item<?php echo isPage('account') ? ' active' : '' ?>">
