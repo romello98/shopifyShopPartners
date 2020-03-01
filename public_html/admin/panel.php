@@ -97,7 +97,7 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
     <style type="text/css" scoped>
         .data-graph.y<?php echo $CURRENT_YEAR ?>.m<?php echo $CURRENT_MONTH ?> td.d<?php echo $currentDay ?>
         {
-            background-color: lightgoldenrodyellow !important;
+            background-color: #DDDDDD !important;
         }
     </style>
     <thead>

@@ -4,8 +4,10 @@ require_once __DIR__ . '/model/Partner.class.php';
 require_once __DIR__ . '/model/Admin.class.php';
 require_once __DIR__ . '/model/Order.class.php';
 require_once __DIR__ . '/model/PaymentRequest.class.php';
+require_once __DIR__ . '/model/Customer.class.php';
 require_once __DIR__ . '/utils.php';
 require_once __DIR__ . '/security.php';
+require_once __DIR__ . '/mailService.php';
 
 define('ERR_LOGIN_INCORRECT', 'Le login/mot de passe entré est incorrect.');
 define('ERR_LOGIN_INFO', 'Les informations envoyées lors de la connexion sont erronées.');
@@ -15,13 +17,14 @@ date_default_timezone_set('Europe/Brussels');
 class DataService
 {
     private const SERVER_NAME = 'localhost';
-    private const USER_NAME = 'id12511142_admin';
-    private const PASSWORD = 'Romelimelo98!';
-    private const DATABASE = 'id12511142_shoppartners';
+    private const USER_NAME = 'pandrkde_admin';
+    private const PASSWORD = 'Romelimelo9889!';
+    private const DATABASE = 'pandrkde_pandaroo';
+    private $mailService;
     
     function __construct()
     {
-
+        $this->mailService = new MailService();
     }
     
     function createConnection()
@@ -165,7 +168,7 @@ class DataService
         if($year == null) $year = date('Y');
         
         $connection = $this->createConnection();
-        $query = "SELECT PartnerID, sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `TotalSales`, count(*) AS `NumberOfSales`, DAY(PaymentDateTime) AS `Day`, sum(Amount) AS `Turnover`
+        $query = "SELECT PartnerID, sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `TotalSales`, sum(Amount * CommissionPercentage) AS `NoBonusTotalSales`, count(*) AS `NumberOfSales`, DAY(PaymentDateTime) AS `Day`, sum(Amount) AS `Turnover`
             FROM `Order`
             WHERE CommissionPercentage IS NOT NULL AND `Status` NOT IN('rejected', 'canceled') AND MONTH(PaymentDateTime) = ? 
             AND YEAR(PaymentDateTime) = ? 
@@ -194,7 +197,7 @@ class DataService
         if($year == null) $year = date('Y');
         
         $connection = $this->createConnection();
-        $query = "SELECT sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `TotalSales`, count(*) AS `NumberOfSales`, DAY(PaymentDateTime) AS `Day`, sum(Amount) AS `Turnover`
+        $query = "SELECT sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `TotalSales`, sum(Amount * CommissionPercentage) AS `NoBonusTotalSales`, count(*) AS `NumberOfSales`, DAY(PaymentDateTime) AS `Day`, sum(Amount) AS `Turnover`
             FROM `Order`
             WHERE CommissionPercentage IS NOT NULL AND `Status` NOT IN('rejected', 'canceled') AND MONTH(PaymentDateTime) = ? 
             AND YEAR(PaymentDateTime) = ?
@@ -376,12 +379,16 @@ class DataService
 
     function addOrder(Order $order)
     {
+        $mustApplyBonus = null;
+        $bonusApplied = null;
+
         if($order->_ReferralCode !== null)
         {
             $partner = $this->getPartnerByCode($order->_ReferralCode);
             if(isset($partner->ID))
             {
                 $order->PartnerID = intval($partner->ID);
+                $mustApplyBonus = $this->mayBenefitFromMonthlyBonus($order->PartnerID, null, $order->Amount);
             }
 
             if(isset($partner->CommissionPercentage))
@@ -394,32 +401,109 @@ class DataService
     
         if(!empty($order->PartnerID))
         {
-            $sql = "INSERT INTO `Order` (ShopifyID, CommissionPercentage, Amount, PartnerID)
-            VALUES (?, ?, ?, ?)";
+            $sql = "INSERT INTO `Order` (ShopifyID, CommissionPercentage, Amount, PartnerID, CustomerID)
+            VALUES (?, ?, ?, ?, ?)";
+            $statement = $connection->prepare($sql);
+            $statement->bind_param('iddii', 
+                $order->ShopifyID,
+                $order->CommissionPercentage,
+                $order->Amount,
+                $order->PartnerID,
+                $order->CustomerID
+            );
+        }
+        else
+        {
+            $sql = "INSERT INTO `Order` (ShopifyID, CommissionPercentage, Amount, PartnerID, CustomerID)
+            VALUES (?, ?, ?, NULL, ?)";
             $statement = $connection->prepare($sql);
             $statement->bind_param('iddi', 
                 $order->ShopifyID,
                 $order->CommissionPercentage,
                 $order->Amount,
-                $order->PartnerID
+                $order->CustomerID
             );
+        }
+        $statement->execute();
+        $errors = $statement->error_list;
+
+        if(!empty($errors))
+        {
+            $message = join('<br>', $errors);
+
+            $this->mailService->notifyAdminError("[Orders] Commande non insérée", "La commande Shopify d'ID $order->ShopifyID n'a pas été insérée.<br>
+            Détails:<br>
+            $message");
         }
         else
         {
-            $sql = "INSERT INTO `Order` (ShopifyID, CommissionPercentage, Amount, PartnerID)
-            VALUES (?, ?, ?, NULL)";
-            $statement = $connection->prepare($sql);
-            $statement->bind_param('idd', 
-                $order->ShopifyID,
-                $order->CommissionPercentage,
-                $order->Amount
-            );
+            if($mustApplyBonus)
+            { 
+                try
+                {
+                    $bonusApplied = $this->applyMonthlyBonus($order->PartnerID, 0.25);
+                    if(!$bonusApplied) 
+                    {
+                        $this->mailService->notifyAdminError("[Orders] Bonus non appliqué", "Le bonus n'a pas été appliqué pour le partenaire n°$order->PartnerID.");
+                    }
+                } catch(Exception $e)
+                {
+                    $message = $e->getMessage();
+                    $this->mailService->notifyAdminError("[Orders] Bonus non appliqué", "Le bonus n'a pas été appliqué pour le partenaire n°$order->PartnerID.<br>
+                    Détails:<br>
+                    $message");
+                }
+            }
         }
-        $result = $statement->execute();
-        $errors = $statement->error_list;
-        
+        $insertedID = $statement->insert_id;
         $statement->close();
         $connection->close();
+
+        return ['errors' => $errors, 'insert_id' => $insertedID];
+    }
+
+    function addOrderLines($orderLines)
+    {
+        $connection = $this->createConnection();
+        $connection->begin_transaction();
+        $query =
+        "   INSERT INTO `OrderLine` (ShopifyProductID, UnitPrice, Label, Quantity, OrderID)
+            VALUES (?, ?, ?, ?, ?)
+        ";
+
+        foreach($orderLines as $orderLine)
+        {
+            $statement = $connection->prepare($query);
+            $statement->bind_param('idsii', $orderLine->ShopifyProductID, $orderLine->UnitPrice, $orderLine->Label, $orderLine->Quantity, $orderLine->OrderID);
+            if(!$statement->execute())
+            {
+                $connection->rollback();
+                throw new Exception("Order lines has encountered errors:<br>" . join("<br>", $statement->error_list));
+            }
+            $statement->close();
+        }
+
+        $connection->commit();
+        $connection->close();
+    }
+
+    function cancelOrder($canceledOrder)
+    {
+        if($canceledOrder == null) return [];
+
+        $shopifyID = $canceledOrder->ShopifyID;
+        $connection = $this->createConnection();
+        $statement = $connection->prepare(
+        "   UPDATE `Order`
+            SET `Status` = 'canceled'
+            WHERE ShopifyID = ?
+        ");
+        $statement->bind_param('i', $shopifyID);
+        $statement->execute();
+        $errors = $statement->error_list;
+        $statement->close();
+        $connection->close();
+
         return $errors;
     }
 
@@ -453,7 +537,7 @@ class DataService
 
         $connection = $this->createConnection();
         $query = "
-            SELECT sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `Revenue`, sum(Amount) AS `SalesAmount`
+            SELECT sum(Amount * COALESCE(BonusCommissionPercentage, CommissionPercentage)) AS `Revenue`, sum(Amount * CommissionPercentage) as `NoBonusRevenue`, sum(Amount) AS `SalesAmount`
             FROM `Order`
             WHERE `Status` NOT IN('rejected', 'canceled')
             AND PartnerID = ?
@@ -669,7 +753,8 @@ class DataService
                 SET BonusCommissionPercentage = ?
                 WHERE MONTH(PaymentDateTime) = ?
                 AND YEAR(PaymentDateTime) = ?
-                AND PartnerID = ?";
+                AND PartnerID = ?
+                AND BonusCommissionPercentage IS NULL";
             $statement = $connection->prepare($query);
             $statement->bind_param('diii', $bonus, $month, $year, $partnerID);
             $statement->execute();
@@ -684,11 +769,11 @@ class DataService
         return $numberRowsAffected > 0;
     }
 
-    function hasAlreadyHadMonthlyBonus($partnerID)
+    function hasAlreadyHadMonthlyBonus($partnerID, $month = null, $year = null)
     {
         if($partnerID == null) return true;
-        $month = intval(date('n'));
-        $year = intval(date('Y'));
+        if($month == null) $month = intval(date('n'));
+        if($year == null) $year = intval(date('Y'));
         
         $connection = $this->createConnection();
         $query = 
@@ -707,7 +792,7 @@ class DataService
         return $result->num_rows > 0;
     }
 
-    function mayBenefitFromMonthlyBonus($partnerID, $minTurnover = 500)
+    function mayBenefitFromMonthlyBonus($partnerID, $minTurnover = 500., $positiveOffsetAmount = 0)
     {
         if($partnerID == null) return false;
         $month = intval(date('n'));
@@ -717,7 +802,7 @@ class DataService
         $query = 
         "   SELECT SUM(Amount) `Amount`, MONTH(PaymentDateTime) M, YEAR(PaymentDateTime) Y FROM `Order`
             WHERE PartnerID = ?
-            GROUP BY M, Y
+            GROUP BY Y, M
             HAVING M = ? AND Y = ?";
         $statement = $connection->prepare($query);
         $statement->bind_param('iii', $partnerID, $month, $year);
@@ -726,7 +811,10 @@ class DataService
         $statement->close();
         $connection->close();
 
-        return $result->fetch_assoc()['Amount'] >= $minTurnover && !$this->hasAlreadyHadMonthlyBonus($partnerID);
+        if($result->num_rows == 0) $amount = 0;
+        else $amount = $result->fetch_assoc()['Amount'];
+
+        return $amount >= ($minTurnover - doubleval($positiveOffsetAmount));
     }
 
     function getCustomersEmails($onlyAcceptMarketing = true)
@@ -761,6 +849,124 @@ class DataService
             $emailsList[] = $row['Email'];
 
         return $emailsList;
+    }
+
+    function getCustomers($onlyAcceptMarketing = false)
+    {
+        $customers = [];
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT *
+            FROM `Customer`";
+        if($onlyAcceptMarketing)
+            $query .= " WHERE AcceptsMarketing = 1";
+        $result = $connection->query($query);
+        $connection->close();
+
+        while($row = $result->fetch_object(Customer::class))
+            $customers[] = $row;
+        return $customers;
+    }
+
+    function getPartners()
+    {
+        $partners = [];
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT *
+            FROM `Partner`";
+        $result = $connection->query($query);
+        $connection->close();
+
+        while($row = $result->fetch_object(Partner::class))
+            $partners[] = $row;
+
+        return $partners;
+    }
+
+    function findCustomerByShopifyID($shopifyID)
+    {
+        if($shopifyID == null) return null;
+
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT *
+            FROM `Customer`
+            WHERE ShopifyID = ?";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('i', $shopifyID);
+        $statement->execute();
+        $result = $statement->get_result();
+        $errorsList = $statement->error_list;
+        $statement->close();
+        $connection->close();
+
+        if(!empty($errorsList)) throw new Exception(join("<br>", $errorsList));
+    
+        return $result->fetch_object(Customer::class) ?? null;
+    }
+
+    function findCustomerByEmail($email)
+    {
+        if($email == null) return null;
+
+        $connection = $this->createConnection();
+        $query = 
+        "   SELECT *
+            FROM `Customer`
+            WHERE Email = ?";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('s', $email);
+        $statement->execute();
+        $result = $statement->get_result();
+        $errorsList = $statement->error_list;
+        $statement->close();
+        $connection->close();
+
+        if(!empty($errorsList)) throw new Exception(join("<br>", $errorsList));
+
+        return $result->fetch_object(Customer::class) ?? null;
+    }
+
+    function addCustomer(Customer $customer)
+    {
+        $connection = $this->createConnection();
+        $query = 
+        "   INSERT INTO `Customer` (FirstName, LastName, Email, AcceptsMarketing, ShopifyID)
+            VALUES (?, ?, ?, ?, ?)";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('sssii', $customer->FirstName, $customer->LastName, $customer->Email, $customer->AcceptsMarketing, $customer->ShopifyID);
+        $statement->execute();
+        $insertedID = $statement->insert_id; 
+        $errorsList = $statement->error_list;
+        $statement->close();
+        $connection->close();
+
+        if(!empty($errorsList)) throw new Exception(join("<br>", $errorsList));
+
+        return $insertedID ?? null;
+    }
+
+    function updateCustomer($customer)
+    {
+        $connection = $this->createConnection();
+        $query = 
+        "   UPDATE `Customer`
+            SET FirstName = ?, 
+            LastName = ?, 
+            Email = ?, 
+            AcceptsMarketing = ?
+            WHERE ID = ?";
+        $statement = $connection->prepare($query);
+        $statement->bind_param('sssii', $customer->FirstName, $customer->LastName, $customer->Email, $customer->AcceptsMarketing, $customer->ID);
+        $statement->execute();
+        $errorsList = $statement->error_list;
+        $statement->close();
+        $connection->close();
+
+        if(!empty($errorsList)) throw new Exception(join("<br>", $errorsList));
+
+        return $statement->affected_rows > 0;
     }
 }
 

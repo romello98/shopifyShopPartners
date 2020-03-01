@@ -12,6 +12,7 @@ class Order
     public $CustomerWithdrawalLimitDate;
     public $Amount;
     public $PartnerID;
+    public $CustomerID;
 
     public $_ReferralCode;
     private static $STATUSES_LABELS = [ 'created' => 'en attente', 
@@ -23,8 +24,6 @@ class Order
 
     function fillWithShopifyObject($obj)
     {
-        if(!self::filledProperty($obj, 'financial_status') || $obj->financial_status !== 'paid')
-            throw new Exception('Financial status is empty.');
         if(self::filledProperty($obj, 'id'))
             $this->ShopifyID = intval($obj->id);
         else throw new Exception('Order id is null.');

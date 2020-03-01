@@ -1,6 +1,11 @@
-$primary : #00bcd4 !default;
+$primary : #ff472e !default;
 
 @import 'node_modules/bootstrap/scss/bootstrap';
+
+body
+{
+    padding-bottom: 100px;
+}
 
 nav
 {
@@ -162,7 +167,7 @@ table.summary
                 color: $primary;
             }
 
-            color: rgb(201, 66, 255);
+            color: #2AD37A;
         }
 
         .left-y-axis
@@ -196,7 +201,7 @@ table.summary
 
             .graph-bar-data
             {
-                background-color: rgb(201, 66, 255);
+                background-color: #2AD37A;
                 width: 100%;
             }
 

@@ -25,18 +25,6 @@ $dataService = new DataService();
 $currentUser = getCurrentLoggedUser();
 setlocale(LC_TIME, "fr_FR");
 
-$isClaimReward = (get_clean_obtain('claimReward') === 'true');
-
-if($isClaimReward)
-{
-    $claimAppliedSuccessfully = false;
-
-    if($dataService->mayBenefitFromMonthlyBonus($currentUser->ID, $MIN_TURNOVER_FOR_BONUS))
-    {
-        $claimAppliedSuccessfully = $dataService->applyMonthlyBonus($currentUser->ID, $COMMISSION_BONUS);
-    }
-}
-
 $MONTHS = ['Janvier', 'Février', 'Mars', 'Avril', 'Mai', 'Juin', 'Juillet', 'Août', 'Septembre', 'Octobre', 'Novembre', 'Décembre'];
 $CURRENT_YEAR = date('Y');
 $CURRENT_MONTH = date('n');
@@ -47,6 +35,9 @@ $getYear = get_clean_obtain('year');
 $currentYear = isValidYear($getYear) ? intval($getYear) : intval(date('Y'));
 $currentMonth = isValidMonth($getMonth) ? intval($getMonth) : intval(date('n'));
 $currentDay = date('j');
+
+$isCurrentMonth = $CURRENT_MONTH == $currentMonth && $CURRENT_YEAR == $currentYear;
+$hasAlreadyHadBonus = $dataService->hasAlreadyHadMonthlyBonus($currentUser->ID, $currentMonth, $currentYear);
 
 $visits = $dataService->getVisitsByPartnerIdAndMonth($currentUser->ID, $currentMonth, $currentYear);
 $sales = $dataService->getSalesByPartnerIdAndMonth($currentUser->ID, $currentMonth, $currentYear);
@@ -62,6 +53,7 @@ $graphData = [];
 $maxVisits = 0;
 $maxSales = 0;
 $totalMonthSales = 0;
+$totalMonthNoBonusSales = 0;
 $totalMonthVisits = 0;
 $iDayMostVisits = 1;
 $iDayMostSales = 1;
@@ -84,6 +76,7 @@ for($iDay = 1; $iDay <= $thisMonthDays; $iDay++)
     if(!empty($sales[$iSale]) && $sales[$iSale]['Day'] == $iDay)
     {
         $totalSales = $sales[$iSale]['TotalSales'];
+        $noBonusTotalSales = $sales[$iSale]['NoBonusTotalSales'];
         $turnover += $sales[$iSale]['Turnover'];
         if($totalSales > $maxSales)
         {
@@ -92,8 +85,13 @@ for($iDay = 1; $iDay <= $thisMonthDays; $iDay++)
         }
         $iSale++;
     }
-    else $totalSales = 0;
+    else 
+    { 
+        $totalSales = 0;
+        $noBonusTotalSales = 0;
+    }
     $totalMonthSales += $totalSales;
+    $totalMonthNoBonusSales += $noBonusTotalSales;
 
     $graphData[$iDay] = [];
     $graphData[$iDay]['visits'] = $nbVisits;
@@ -108,23 +106,37 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
 <?php ob_start(); ?>
 
 <h1 class="mb-5">Activité</h1>
-<?php if($isClaimReward) : ?>
-    <?php if($claimAppliedSuccessfully) : ?>
-        <p class="alert alert-success">Une commission de <?php echo number_format($COMMISSION_BONUS * 100, 2) ?> % a été appliquée sur les commandes du mois en cours avec succès. Félicitations !</p>
+<h2 class="mb-3">Progression</h2>
+<?php $remainingTurnoverForBonus = ($MIN_TURNOVER_FOR_BONUS - $turnover); ?>
+<?php if(!$hasAlreadyHadBonus && $remainingTurnoverForBonus > 0) : ?>
+    <?php if($isCurrentMonth) : ?>
+    <p class="text-secondary">
+        Il vous reste 
+            <span class="font-weight-bold text-success"><?php echo number_format($remainingTurnoverForBonus, 2) ?> €</span> 
+        à réaliser pour faire passer votre commission de 
+            <span class="current-commission font-weight-bold"><?php echo number_format($currentUser->CommissionPercentage * 100, 2) ?> %</span>
+        à 
+            <span class="bonus-commission font-weight-bold text-success"><?php echo number_format($COMMISSION_BONUS * 100, 2) ?> %</span> !
+    </p>
     <?php else : ?>
-        <p class="alert alert-danger">Vous ne pouvez pas bénéficier d'une commission bonus.</p>
+        <p class="text-secondary">Vous n'aviez pas atteint le seuil bonus de ce mois.</p>
     <?php endif; ?>
+<?php else : ?>
+    <p class="text-success">Vous avez atteint le seuil bonus pour ce mois, félicitations pour vos ventes !</p>
 <?php endif; ?>
+<div class="progress mb-5">
+    <div data-toggle="tooltip" data-placement="top" title="<?php echo number_format($turnover, 2) . ' € / ' . number_format($MIN_TURNOVER_FOR_BONUS, 2) . ' €' ?>" class="progress-bar progress-bar-striped bg-success" role="progressbar" style="width: <?php echo $remainingTurnoverForBonus <= 0 ? '100' : (($MIN_TURNOVER_FOR_BONUS - $remainingTurnoverForBonus) / $MIN_TURNOVER_FOR_BONUS * 100); ?>%" aria-valuenow="<?php echo $turnover ?>" aria-valuemin="10" aria-valuemax="<?php echo $MIN_TURNOVER_FOR_BONUS ?>"></div>
+</div>
 <table class="mb-5 summary">
     <style type="text/css" scoped>
         .data-graph.y<?php echo $CURRENT_YEAR ?>.m<?php echo $CURRENT_MONTH ?> td.d<?php echo $currentDay ?>
         {
-            background-color: lightgoldenrodyellow !important;
+            background-color: #DDDDDD !important;
         }
     </style>
     <thead>
         <th class="w-50">Mois</th>
-        <th>Revenus des ventes</th>
+        <th>Vos revenus</th>
         <th>Chiffre d'affaire</th>
         <th>Visites</th>
     </thead>
@@ -147,12 +159,16 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
                 <button class="btn btn-primary" type="submit">Voir</button>
                 </form>
             </td>
-            <td><?php echo number_format($totalMonthSales, 2); ?> €</td>
+            <td>
+                <?php if($totalMonthNoBonusSales != $totalMonthSales) : ?>
+                    <del class="text-secondary"><?php echo number_format($totalMonthNoBonusSales, 2); ?> €</del>
+                    <span class="text-success"><?php echo number_format($totalMonthSales, 2) ?> €</span>
+                <?php else : ?>
+                    <span><?php echo number_format($totalMonthSales, 2) ?> €</span>
+                <?php endif; ?>
+            </td>
             <td>
                 <?php echo number_format($turnover, 2) ?> €
-                <?php if($turnover >= $MIN_TURNOVER_FOR_BONUS && !$dataService->hasAlreadyHadMonthlyBonus($currentUser->ID)): ?>
-                    <a href="?claimReward=true" class="btn btn-sm mb-1 btn-success">Réclamer ma prime</a>
-                <?php endif; ?>
             </td>
             <td><?php echo $totalMonthVisits ?></td>
         </tr>

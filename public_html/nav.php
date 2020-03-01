@@ -9,7 +9,7 @@ function isPage($pageName)
 
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary p-4 mb-3">
     <div class="container">
-        <a class="navbar-brand mr-5" href="#">Partenaires</a>
+        <a class="navbar-brand mr-5" href="/">Partenaires</a>
         <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>

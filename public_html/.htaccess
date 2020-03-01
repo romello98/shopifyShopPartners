@@ -4,3 +4,6 @@ php_value display_errors 1
 # DO NOT REMOVE OR MODIFY THIS LINE AND THE LINES ABOVE HTID:12652731:
 
 Header set Access-Control-Allow-Origin *
+
+php_value SMTP mail.pandaroo.yo.fr
+php_value smtp_port 465
