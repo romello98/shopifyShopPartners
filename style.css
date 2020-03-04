@@ -16,6 +16,12 @@
   font-weight: 500;
 }
 
+@font-face {
+  font-family: "Avenir";
+  src: url("/fonts/AvenirLTStd-Black.otf") format("otf");
+  font-weight: bold;
+}
+
 /*!
  * Bootstrap v4.4.1 (https://getbootstrap.com/)
  * Copyright 2011-2019 The Bootstrap Authors
