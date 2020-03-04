@@ -19,7 +19,7 @@ class DataService
     private const SERVER_NAME = 'localhost';
     private const USER_NAME = 'pandrkde_admin';
     private const PASSWORD = 'Romelimelo9889!';
-    private const DATABASE = 'pandrkde_pandaroo';
+    private const DATABASE = 'pandrkde_cocoonize';
     private $mailService;
     
     function __construct()
