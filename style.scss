@@ -1,22 +1,22 @@
 @font-face {
 	font-family: "Avenir";
-    src: url("fonts/AvenirLTStd-Book.otf") format("otf");
+    src: url("/fonts/AvenirLTStd-Book.otf") format("otf");
     font-weight: 300;
 }
 
 @font-face {
 	font-family: "Avenir";
-    src: url("fonts/AvenirLTStd-Roman.otf") format("otf");
+    src: url("/fonts/AvenirLTStd-Roman.otf") format("otf");
     font-weight: 400;
 }
 
 @font-face {
 	font-family: "Avenir";
-    src: url("fonts/AvenirLTStd-Medium.otf") format("otf");
+    src: url("/fonts/AvenirLTStd-Medium.otf") format("otf");
     font-weight: 500;
 }
 
-$font-family-sans-serif: Avenir !default;
+$font-family-sans-serif: "Avenir" !default;
 $primary : #ff472e !default;
 
 @import 'node_modules/bootstrap/scss/bootstrap';
