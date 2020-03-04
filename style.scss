@@ -1,7 +1,25 @@
+@font-face {
+	font-family: "Avenir";
+    src: url("fonts/AvenirLTStd-Book.otf") format("otf");
+    font-weight: 300;
+}
+
+@font-face {
+	font-family: "Avenir";
+    src: url("fonts/AvenirLTStd-Roman.otf") format("otf");
+    font-weight: 400;
+}
+
+@font-face {
+	font-family: "Avenir";
+    src: url("fonts/AvenirLTStd-Medium.otf") format("otf");
+    font-weight: 500;
+}
+
+
 $primary : #ff472e !default;
 
 @import 'node_modules/bootstrap/scss/bootstrap';
-
 body
 {
     padding-bottom: 100px;

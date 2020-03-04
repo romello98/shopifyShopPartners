@@ -1,3 +1,21 @@
+@font-face {
+  font-family: "Avenir";
+  src: url("fonts/AvenirLTStd-Book.otf") format("otf");
+  font-weight: 300;
+}
+
+@font-face {
+  font-family: "Avenir";
+  src: url("fonts/AvenirLTStd-Roman.otf") format("otf");
+  font-weight: 400;
+}
+
+@font-face {
+  font-family: "Avenir";
+  src: url("fonts/AvenirLTStd-Medium.otf") format("otf");
+  font-weight: 500;
+}
+
 /*!
  * Bootstrap v4.4.1 (https://getbootstrap.com/)
  * Copyright 2011-2019 The Bootstrap Authors
