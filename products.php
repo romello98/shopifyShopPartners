@@ -174,9 +174,9 @@ $products = json_decode($shopifyProducts)->products;
 
 <div class="row mb-5">
     <?php foreach($products as $product) : ?>
-        <div class="col-md-3">
+        <div class="col-md-3 d-flex flex-column">
             <img class="mb-3 product-image" src="<?php echo $product->images[0]->src ?? '/images/products/default.svg'; ?>" />
-            <h5 class="mb-3"><a class="d-block product-link" target="_blank" href="<?php echo "https://$DOMAIN_NAME/products/$product->handle"; ?>"><?php echo $product->title; ?></a></h5>
+            <h5 class="mb-3 flex-grow-1"><a class="d-block product-link" target="_blank" href="<?php echo "https://$DOMAIN_NAME/products/$product->handle"; ?>"><?php echo $product->title; ?></a></h5>
             <a onclick="sendToCopy(this)" href="#trackedURL" class="mb-2 d-block btn btn-primary">Copier lien affilié</a>
             <a class="d-block btn btn-dark text-light" onclick="getPromotionTools(<?php echo $product->id ?>)">Outils de promotion</a>
         </div>
