@@ -135,13 +135,25 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
         }
     </style>
     <thead>
-        <th class="w-50">Mois</th>
         <th>Vos revenus</th>
         <th>Chiffre d'affaire</th>
         <th>Visites</th>
+        <th class="w-50">Mois</th>
     </thead>
     <tbody>
         <tr>
+            <td>
+                <?php if($totalMonthNoBonusSales != $totalMonthSales) : ?>
+                    <del class="text-secondary"><?php echo number_format($totalMonthNoBonusSales, 2); ?> €</del>
+                    <span class="text-success"><?php echo number_format($totalMonthSales, 2) ?> €</span>
+                <?php else : ?>
+                    <span><?php echo number_format($totalMonthSales, 2) ?> €</span>
+                <?php endif; ?>
+            </td>
+            <td>
+                <?php echo number_format($turnover, 2) ?> €
+            </td>
+            <td><?php echo $totalMonthVisits ?></td>
             <td>
                 <form method="GET" action="" class="d-flex">
                 <select class="form-control mr-2" name="month">
@@ -159,18 +171,6 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
                 <button class="btn btn-primary" type="submit">Voir</button>
                 </form>
             </td>
-            <td>
-                <?php if($totalMonthNoBonusSales != $totalMonthSales) : ?>
-                    <del class="text-secondary"><?php echo number_format($totalMonthNoBonusSales, 2); ?> €</del>
-                    <span class="text-success"><?php echo number_format($totalMonthSales, 2) ?> €</span>
-                <?php else : ?>
-                    <span><?php echo number_format($totalMonthSales, 2) ?> €</span>
-                <?php endif; ?>
-            </td>
-            <td>
-                <?php echo number_format($turnover, 2) ?> €
-            </td>
-            <td><?php echo $totalMonthVisits ?></td>
         </tr>
     </tbody>
 </table>
