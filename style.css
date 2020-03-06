@@ -10782,6 +10782,16 @@ a.text-dark:hover, a.text-dark:focus {
   }
 }
 
+::-moz-selection {
+  color: white;
+  background: #00000070;
+}
+
+::selection {
+  color: white;
+  background: #00000070;
+}
+
 body {
   padding-bottom: 100px;
 }

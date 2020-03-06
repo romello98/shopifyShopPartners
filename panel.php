@@ -138,7 +138,7 @@ $maxSales = ceil(($maxSales + 1) / 10) * 10;
         <th>Vos revenus</th>
         <th>Chiffre d'affaire</th>
         <th>Visites</th>
-        <th class="w-50">Mois</th>
+        <th class="w-50" style="min-width: 500px !important">Mois</th>
     </thead>
     <tbody>
         <tr>

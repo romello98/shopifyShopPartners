@@ -20,6 +20,12 @@ $font-family-sans-serif: "Avenir" !default;
 $primary : #00a99d !default;
 
 @import 'node_modules/bootstrap/scss/bootstrap';
+
+::selection {
+    color: white;
+    background: #00000070;
+}
+
 body
 {
     padding-bottom: 100px;
